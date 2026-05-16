@@ -5,7 +5,7 @@ scenarios:
     exit_year: 2030
     debt_interest_rate: 0.08
     debt_repayment_speed: 0.75
-    ebitda_growth: 0.12
+    ebitda_growth: 0.1817
     capex_intensity: 0.03
     tax_rate: 0.10
   Optimistic:
@@ -14,7 +14,7 @@ scenarios:
     exit_year: 2030
     debt_interest_rate: 0.075
     debt_repayment_speed: 0.90
-    ebitda_growth: 0.15
+    ebitda_growth: 0.22
     capex_intensity: 0.025
     tax_rate: 0.10
   Pessimistic:
@@ -23,7 +23,6 @@ scenarios:
     exit_year: 2030
     debt_interest_rate: 0.09
     debt_repayment_speed: 0.50
-    ebitda_growth: 0.08
+    ebitda_growth: 0.12
     capex_intensity: 0.04
     tax_rate: 0.15
-
