@@ -126,14 +126,28 @@ class DebtModel(BaseModel):
 
 
 class ValueCreationBridge(BaseModel):
+    entry_equity_value: float
     ebitda_growth: float
     multiple_expansion: float
-    debt_paydown: float
-    tax_leakage: float
+    deleveraging: float
+    dividends: float = 0.0
+    tax_leakage: float = 0.0
+    exit_equity_value: float
 
     @property
     def total(self) -> float:
-        return self.ebitda_growth + self.multiple_expansion + self.debt_paydown + self.tax_leakage
+        return self.exit_equity_value
+
+    @property
+    def implied_exit_equity_value(self) -> float:
+        return (
+            self.entry_equity_value
+            + self.ebitda_growth
+            + self.multiple_expansion
+            + self.deleveraging
+            + self.dividends
+            + self.tax_leakage
+        )
 
 
 class SensitivityTable(BaseModel):

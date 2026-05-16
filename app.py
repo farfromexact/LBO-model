@@ -11,13 +11,27 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from lbo.charts import metric_line_chart, sensitivity_heatmap, value_creation_bridge_chart
+from lbo.charts import debt_paydown_waterfall, operating_trend_chart, sensitivity_heatmap, value_creation_bridge_chart
 from lbo.engine import build_snapshot, load_scenario_defaults
 from lbo.io.excel_loader import WorkbookLoadError
 from lbo.schemas import EngineAssumptions
 
 
-DEFAULT_WORKBOOK = ROOT / "examples" / "CPE 龙岛竹项目_财务模型_20260317.xlsx"
+def default_workbook_path() -> Path | None:
+    return next((ROOT / "examples").glob("CPE*20260317.xlsx"), None)
+
+
+def format_metric(value: object, unit: str | None = None) -> str:
+    if value is None:
+        return "N/A"
+    if isinstance(value, float):
+        if unit == "%":
+            return f"{value:.1%}"
+        if unit == "x":
+            return f"{value:.2f}x"
+        return f"{value:,.1f}"
+    return str(value)
+
 
 st.set_page_config(page_title="LBO Dashboard", layout="wide")
 st.title("LBO Dashboard")
@@ -75,79 +89,67 @@ engine_assumptions = EngineAssumptions(
     tax_rate=tax_rate,
 )
 
-if not DEFAULT_WORKBOOK.exists():
+workbook_path = default_workbook_path()
+if workbook_path is None or not workbook_path.exists():
     st.error("Default CPE workbook was not found.")
-    st.caption(f"Expected path: {DEFAULT_WORKBOOK}")
-    st.caption("For deployment, add the workbook at this path or re-enable workbook upload later.")
+    st.caption(f"Expected path pattern: {ROOT / 'examples' / 'CPE*20260317.xlsx'}")
     st.stop()
 
 try:
-    snapshot = build_snapshot(DEFAULT_WORKBOOK, scenario=scenario, engine_assumptions=engine_assumptions)
+    snapshot = build_snapshot(workbook_path, scenario=scenario, engine_assumptions=engine_assumptions)
 except WorkbookLoadError as exc:
     st.error(str(exc))
     st.stop()
 
 st.session_state["model_snapshot"] = snapshot
-
 st.caption(f"Workbook: {snapshot.workbook_name} | Scenario: {snapshot.scenario}")
 
-st.subheader("Detected Core Sheets")
-st.dataframe(snapshot.core_sheets.as_rows(), use_container_width=True, hide_index=True)
-if snapshot.core_sheets.missing_roles:
-    st.warning("Missing sheet roles: " + ", ".join(snapshot.core_sheets.missing_roles))
-
-st.subheader("Key Outputs")
-metric_order = [
-    "revenue",
-    "ebitda",
-    "net_debt",
-    "capex",
-    "cash_flow",
-    "entry_ev",
-    "exit_ev",
-    "irr",
-    "moic",
-]
-
-cols = st.columns(3)
-for idx, key in enumerate(metric_order):
-    metric = snapshot.metrics[key]
-    value = "Missing" if metric.is_missing else metric.value
-    if isinstance(value, float):
-        if metric.unit == "%":
-            value = f"{value:.1%}"
-        elif metric.unit == "x":
-            value = f"{value:.2f}x"
-        else:
-            value = f"{value:,.1f}"
-    with cols[idx % 3]:
-        st.metric(metric.display_name, value, help=metric.source.display)
-        st.caption(f"Source: {metric.source.display}")
-        if metric.missing_reason:
-            st.caption(metric.missing_reason)
-
-st.subheader("Financial Trends")
-for key in ["revenue", "ebitda", "net_debt", "capex", "cash_flow"]:
-    if key in snapshot.tables:
-        st.plotly_chart(metric_line_chart(snapshot.tables[key]), use_container_width=True)
-
-st.subheader("Python Engine Outputs")
 engine = snapshot.python_engine
-if engine is not None:
-    output_cols = st.columns(4)
-    output_cols[0].metric("Python IRR", "N/A" if engine.irr is None else f"{engine.irr:.1%}")
-    output_cols[1].metric("Python MOIC", "N/A" if engine.moic is None else f"{engine.moic:.2f}x")
-    output_cols[2].metric("Exit Equity Value", f"{engine.exit_equity_value:,.1f}")
-    output_cols[3].metric(
-        "Net Debt / EBITDA",
-        "N/A" if engine.net_debt_to_ebitda is None else f"{engine.net_debt_to_ebitda:.2f}x",
-    )
+if engine is None:
+    st.error("Python engine did not return outputs.")
+    st.stop()
 
-    debt_rows = [period.model_dump() for period in engine.debt_model.periods]
-    st.dataframe(pd.DataFrame(debt_rows), use_container_width=True, hide_index=True)
+st.subheader("Deal Snapshot")
+cols = st.columns(5)
+cols[0].metric("IRR", format_metric(engine.irr, "%"))
+cols[1].metric("MOIC", format_metric(engine.moic, "x"))
+cols[2].metric("Exit Equity Value", format_metric(engine.exit_equity_value))
+cols[3].metric("Exit EV", format_metric(engine.exit_ev))
+cols[4].metric("Net Debt / EBITDA", format_metric(engine.net_debt_to_ebitda, "x"))
 
-    chart_cols = st.columns(2)
-    with chart_cols[0]:
-        st.plotly_chart(value_creation_bridge_chart(engine.value_creation_bridge), use_container_width=True)
-    with chart_cols[1]:
-        st.plotly_chart(sensitivity_heatmap(engine.sensitivity), use_container_width=True)
+st.divider()
+st.subheader("1. Value Creation Bridge")
+st.plotly_chart(value_creation_bridge_chart(engine.value_creation_bridge), use_container_width=True)
+st.caption("Core LBO view: entry equity value to exit equity value by EBITDA growth, multiple movement, deleveraging, and distributions.")
+
+st.divider()
+st.subheader("2. Debt Paydown Waterfall")
+st.plotly_chart(debt_paydown_waterfall(engine.debt_model), use_container_width=True)
+st.caption("Shows whether returns are driven by deleveraging or by exit multiple support.")
+
+st.divider()
+st.subheader("3. Revenue / EBITDA / FCF Trend")
+st.plotly_chart(operating_trend_chart(snapshot.tables), use_container_width=True)
+st.caption("Validates the operating story behind the return model.")
+
+st.divider()
+st.subheader("4. Sensitivity Heatmap")
+st.plotly_chart(sensitivity_heatmap(engine.sensitivity), use_container_width=True)
+st.caption("IRR sensitivity across entry and exit multiples.")
+
+with st.expander("Audit: source sheets and extracted Excel values"):
+    st.dataframe(snapshot.core_sheets.as_rows(), use_container_width=True, hide_index=True)
+    if snapshot.core_sheets.missing_roles:
+        st.warning("Missing sheet roles: " + ", ".join(snapshot.core_sheets.missing_roles))
+
+    metric_rows = [
+        {
+            "Metric": metric.display_name,
+            "Excel Value": metric.value,
+            "Unit": metric.unit,
+            "Source": metric.source.display,
+            "Label": metric.source.label,
+        }
+        for metric in snapshot.metrics.values()
+    ]
+    st.dataframe(pd.DataFrame(metric_rows), use_container_width=True, hide_index=True)

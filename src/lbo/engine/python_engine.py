@@ -54,10 +54,13 @@ def run_python_engine(
     irr = _annual_irr(entry_year, exit_year, sponsor_equity, after_tax_exit_equity)
 
     bridge = ValueCreationBridge(
+        entry_equity_value=sponsor_equity,
         ebitda_growth=(exit_ebitda - entry_ebitda) * assumptions.entry_multiple,
         multiple_expansion=exit_ebitda * (assumptions.exit_multiple - assumptions.entry_multiple),
-        debt_paydown=initial_debt - ending_net_debt,
+        deleveraging=initial_debt - ending_net_debt,
+        dividends=0.0,
         tax_leakage=-tax_leakage,
+        exit_equity_value=after_tax_exit_equity,
     )
 
     sensitivity = _build_sensitivity(
@@ -182,4 +185,3 @@ def _first_numeric(table: FinancialStatementTable | None, fallback: float) -> fl
 
 def _numeric(value: object) -> float:
     return float(value) if isinstance(value, (int, float)) else 0.0
-
