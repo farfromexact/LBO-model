@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from lbo.schemas import (
     CoreSheets,
+    EngineAssumptions,
     FinancialStatementTable,
     MetricValue,
     ModelSnapshot,
@@ -71,3 +72,31 @@ def test_financial_statement_table_width_validation() -> None:
             source=source_ref(),
         )
 
+
+def test_engine_assumptions_validation() -> None:
+    assumptions = EngineAssumptions(
+        scenario="Base",
+        entry_multiple=8.5,
+        exit_multiple=10.0,
+        exit_year=2030,
+        debt_interest_rate=0.08,
+        debt_repayment_speed=0.75,
+        ebitda_growth=0.12,
+        capex_intensity=0.03,
+        tax_rate=0.10,
+    )
+
+    assert assumptions.exit_year == 2030
+
+    with pytest.raises(ValidationError):
+        EngineAssumptions(
+            scenario="Base",
+            entry_multiple=0,
+            exit_multiple=10.0,
+            exit_year=2030,
+            debt_interest_rate=0.08,
+            debt_repayment_speed=0.75,
+            ebitda_growth=0.12,
+            capex_intensity=0.03,
+            tax_rate=0.10,
+        )

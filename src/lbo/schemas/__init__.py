@@ -1,20 +1,31 @@
 from lbo.schemas.models import (
     CoreSheets,
+    DebtModel,
+    DebtPeriod,
+    EngineAssumptions,
     FinancialStatementTable,
     MetricValue,
     ModelSnapshot,
+    PythonEngineOutputs,
     ReconciliationItem,
     ReturnModel,
     SourceRef,
+    SensitivityTable,
+    ValueCreationBridge,
 )
 
 __all__ = [
     "CoreSheets",
+    "DebtModel",
+    "DebtPeriod",
+    "EngineAssumptions",
     "FinancialStatementTable",
     "MetricValue",
     "ModelSnapshot",
+    "PythonEngineOutputs",
     "ReconciliationItem",
     "ReturnModel",
     "SourceRef",
+    "SensitivityTable",
+    "ValueCreationBridge",
 ]
-

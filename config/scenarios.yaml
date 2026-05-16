@@ -1,0 +1,29 @@
+scenarios:
+  Base:
+    entry_multiple: 8.6
+    exit_multiple: 10.0
+    exit_year: 2030
+    debt_interest_rate: 0.08
+    debt_repayment_speed: 0.75
+    ebitda_growth: 0.12
+    capex_intensity: 0.03
+    tax_rate: 0.10
+  Optimistic:
+    entry_multiple: 8.6
+    exit_multiple: 11.0
+    exit_year: 2030
+    debt_interest_rate: 0.075
+    debt_repayment_speed: 0.90
+    ebitda_growth: 0.15
+    capex_intensity: 0.025
+    tax_rate: 0.10
+  Pessimistic:
+    entry_multiple: 8.6
+    exit_multiple: 8.5
+    exit_year: 2030
+    debt_interest_rate: 0.09
+    debt_repayment_speed: 0.50
+    ebitda_growth: 0.08
+    capex_intensity: 0.04
+    tax_rate: 0.15
+

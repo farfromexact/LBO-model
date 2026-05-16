@@ -100,12 +100,82 @@ class FinancialStatementTable(BaseModel):
         return self
 
 
+class EngineAssumptions(BaseModel):
+    scenario: ScenarioName = "Base"
+    entry_multiple: float = Field(gt=0)
+    exit_multiple: float = Field(gt=0)
+    exit_year: int = Field(ge=2025, le=2050)
+    debt_interest_rate: float = Field(ge=0, le=1)
+    debt_repayment_speed: float = Field(ge=0, le=1)
+    ebitda_growth: float = Field(ge=-0.5, le=1)
+    capex_intensity: float = Field(ge=0, le=1)
+    tax_rate: float = Field(ge=0, le=1)
+
+
+class DebtPeriod(BaseModel):
+    year: int
+    opening_debt: float
+    interest: float
+    cash_available_for_repayment: float
+    repayment: float
+    ending_debt: float
+
+
+class DebtModel(BaseModel):
+    periods: list[DebtPeriod] = Field(default_factory=list)
+
+
+class ValueCreationBridge(BaseModel):
+    ebitda_growth: float
+    multiple_expansion: float
+    debt_paydown: float
+    tax_leakage: float
+
+    @property
+    def total(self) -> float:
+        return self.ebitda_growth + self.multiple_expansion + self.debt_paydown + self.tax_leakage
+
+
+class SensitivityTable(BaseModel):
+    entry_multiples: list[float]
+    exit_multiples: list[float]
+    values: list[list[float | None]]
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "SensitivityTable":
+        if len(self.values) != len(self.entry_multiples):
+            raise ValueError("Sensitivity rows must match entry multiples")
+        for row in self.values:
+            if len(row) != len(self.exit_multiples):
+                raise ValueError("Sensitivity columns must match exit multiples")
+        return self
+
+
+class PythonEngineOutputs(BaseModel):
+    entry_year: int
+    entry_ebitda: float
+    exit_ebitda: float
+    entry_ev: float
+    exit_ev: float
+    sponsor_equity: float
+    exit_equity_value: float
+    after_tax_exit_equity: float
+    irr: float | None
+    moic: float | None
+    ending_net_debt: float
+    net_debt_to_ebitda: float | None
+    debt_model: DebtModel
+    value_creation_bridge: ValueCreationBridge
+    sensitivity: SensitivityTable
+
+
 class ReturnModel(BaseModel):
     irr: MetricValue | None = None
     moic: MetricValue | None = None
     entry_ev: MetricValue | None = None
     exit_ev: MetricValue | None = None
-    status: str = "Excel sourced; Python engine pending"
+    python_outputs: PythonEngineOutputs | None = None
+    status: str = "Excel sourced; Python engine available for selected assumptions"
 
 
 class ReconciliationItem(BaseModel):
@@ -126,6 +196,8 @@ class ModelSnapshot(BaseModel):
     core_sheets: CoreSheets
     metrics: dict[str, MetricValue]
     tables: dict[str, FinancialStatementTable] = Field(default_factory=dict)
+    engine_assumptions: EngineAssumptions | None = None
+    python_engine: PythonEngineOutputs | None = None
     return_model: ReturnModel
     reconciliation: list[ReconciliationItem] = Field(default_factory=list)
 
@@ -135,3 +207,7 @@ class ModelSnapshot(BaseModel):
             if metric.source is None:
                 raise ValueError(f"Metric '{metric.key}' is missing source traceability")
         return self
+
+    @property
+    def reconciliation_by_metric(self) -> dict[str, ReconciliationItem]:
+        return {item.metric_key: item for item in self.reconciliation}
