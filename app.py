@@ -17,10 +17,11 @@ from lbo.io.excel_loader import WorkbookLoadError
 from lbo.schemas import EngineAssumptions
 
 
+DEFAULT_WORKBOOK = ROOT / "examples" / "CPE 龙岛竹项目_财务模型_20260317.xlsx"
+
 st.set_page_config(page_title="LBO Dashboard", layout="wide")
 st.title("LBO Dashboard")
 
-uploaded = st.file_uploader("Upload Excel workbook", type=["xlsx", "xlsm"])
 scenario = st.selectbox("Scenario", ["Base", "Optimistic", "Pessimistic"], index=0)
 
 defaults = load_scenario_defaults(scenario)
@@ -74,12 +75,14 @@ engine_assumptions = EngineAssumptions(
     tax_rate=tax_rate,
 )
 
-if uploaded is None:
-    st.info("Upload an Excel workbook to generate the dashboard.")
+if not DEFAULT_WORKBOOK.exists():
+    st.error("Default CPE workbook was not found.")
+    st.caption(f"Expected path: {DEFAULT_WORKBOOK}")
+    st.caption("For deployment, add the workbook at this path or re-enable workbook upload later.")
     st.stop()
 
 try:
-    snapshot = build_snapshot(uploaded, scenario=scenario, engine_assumptions=engine_assumptions)
+    snapshot = build_snapshot(DEFAULT_WORKBOOK, scenario=scenario, engine_assumptions=engine_assumptions)
 except WorkbookLoadError as exc:
     st.error(str(exc))
     st.stop()
