@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from io import BytesIO
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 from openpyxl import Workbook
@@ -62,9 +63,28 @@ def example_workbook() -> bytes:
 
     returns = workbook["回报测算-EVEBITDA（核心假设）"]
     returns["G19"] = 1130
+    returns["G22"] = -434.2701029457017
+    returns["G24"] = 695.7298970542984
+    returns["G30"] = 452.43315205441024
+    returns["G42"] = 100
+    returns["G55"] = 552.4331520544102
+    returns["H50"] = 0.6248223658423662
     returns["R89"] = 3025.012305344657
+    returns["R90"] = 285.06916702684333
+    returns["R93"] = 3310.0814723715002
+    returns["R94"] = 0
+    returns["R97"] = 0.6248223658423662
+    for cell in ["M99", "N99", "O99", "P99", "Q99", "R99"]:
+        returns[cell] = 0
+    returns["R100"] = 1916.6349582337702
+    returns["L101"] = -552.4331520544102
+    for cell in ["M101", "N101", "O101", "P101", "Q101"]:
+        returns[cell] = 0
+    returns["R101"] = 1916.6349582337702
     returns["G103"] = 3.469442322760885
     returns["G104"] = 0.2823092043399811
+    for cell, year in zip(["L86", "M86", "N86", "O86", "P86", "Q86", "R86"], [2025, 2025, 2026, 2027, 2028, 2029, 2030]):
+        returns[cell] = datetime(year, 12, 31)
 
     buffer = BytesIO()
     workbook.save(buffer)

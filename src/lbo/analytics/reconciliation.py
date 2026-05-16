@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from lbo.registry.metric_registry import MetricRegistry, MetricRegistryEntry
-from lbo.schemas.models import MetricValue, PythonEngineOutputs, ReconciliationItem, SourceRef
+from lbo.schemas.models import MetricValue, PythonEngineOutputs, ReconciliationItem, ReturnBridge, SourceRef
 
 
 def reconcile_metric(
@@ -42,12 +42,13 @@ def reconcile_all(
     excel_snapshot: dict[str, MetricValue],
     python_result: PythonEngineOutputs | None,
     registry: MetricRegistry,
+    return_bridge: ReturnBridge | None = None,
 ) -> list[ReconciliationItem]:
     rows: list[ReconciliationItem] = []
     for metric_id, entry in registry.items():
         excel_metric = excel_snapshot.get(metric_id)
         excel_value = excel_metric.value if excel_metric is not None else None
-        python_value = _python_value_for_metric(metric_id, python_result)
+        python_value = _python_value_for_metric(metric_id, python_result, return_bridge)
         result = reconcile_metric(metric_id, excel_value, python_value, entry.tolerance)
         source = _source_for(entry, excel_metric)
 
@@ -93,17 +94,32 @@ def reconciliation_rows(snapshot) -> list[dict[str, object]]:
     ]
 
 
-def _python_value_for_metric(metric_id: str, python_result: PythonEngineOutputs | None) -> float | None:
-    if python_result is None:
-        return None
-    mapping = {
-        "entry_ev": python_result.entry_ev,
-        "exit_ev": python_result.exit_ev,
-        "irr": python_result.irr,
-        "moic": python_result.moic,
-        "net_debt": python_result.ending_net_debt,
-    }
-    return mapping.get(metric_id)
+def _python_value_for_metric(
+    metric_id: str,
+    python_result: PythonEngineOutputs | None,
+    return_bridge: ReturnBridge | None,
+) -> float | None:
+    bridge_mapping = {}
+    if return_bridge is not None:
+        bridge_mapping = {
+            "entry_ev": return_bridge.entry_ev,
+            "entry_equity_value": return_bridge.entry_equity_value,
+            "sponsor_equity_invested": -return_bridge.sponsor_equity_invested,
+            "exit_ev": return_bridge.exit_ev,
+            "exit_equity_value": return_bridge.exit_equity_value,
+            "sponsor_proceeds": return_bridge.sponsor_proceeds,
+            "irr": return_bridge.irr,
+            "moic": return_bridge.moic,
+        }
+    if metric_id in bridge_mapping:
+        return bridge_mapping[metric_id]
+
+    engine_mapping = {}
+    if python_result is not None:
+        engine_mapping = {
+            "net_debt": python_result.ending_net_debt,
+        }
+    return engine_mapping.get(metric_id)
 
 
 def _source_for(entry: MetricRegistryEntry, excel_metric: MetricValue | None) -> SourceRef:
@@ -117,4 +133,3 @@ def _source_for(entry: MetricRegistryEntry, excel_metric: MetricValue | None) ->
         unit=entry.unit,
         extraction_method="metric_registry",
     )
-

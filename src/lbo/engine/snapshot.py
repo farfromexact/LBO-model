@@ -4,6 +4,7 @@ from pathlib import Path
 
 from lbo.engine.assumptions import load_scenario_defaults
 from lbo.engine.python_engine import run_python_engine
+from lbo.engine.return_model import build_excel_return_bridge
 from lbo.analytics.reconciliation import reconcile_all
 from lbo.io.config import load_metrics_config, load_sheet_aliases
 from lbo.io.excel_loader import ExcelLoader, WorkbookInput
@@ -31,6 +32,13 @@ def build_snapshot(
         tables = extract_tables(loader, core_sheets, metrics_config)
         assumptions = engine_assumptions or load_scenario_defaults(scenario)
         python_engine = run_python_engine(metrics, tables, assumptions)
+        return_bridge = None
+        if core_sheets.return_model is not None:
+            return_bridge = build_excel_return_bridge(loader, core_sheets.return_model)
+            print(
+                "Sponsor cash flow array used for IRR:",
+                [(str(cash_flow.date), cash_flow.amount) for cash_flow in return_bridge.sponsor_cash_flows],
+            )
 
         return_model = ReturnModel(
             irr=metrics.get("irr"),
@@ -38,9 +46,10 @@ def build_snapshot(
             entry_ev=metrics.get("entry_ev"),
             exit_ev=metrics.get("exit_ev"),
             python_outputs=python_engine,
+            bridge=return_bridge,
         )
 
-        reconciliation = reconcile_all(metrics, python_engine, metric_registry)
+        reconciliation = reconcile_all(metrics, python_engine, metric_registry, return_bridge)
 
         return ModelSnapshot(
             workbook_name=loader.workbook_name,

@@ -184,12 +184,36 @@ class PythonEngineOutputs(BaseModel):
     sensitivity: SensitivityTable
 
 
+class SponsorCashFlow(BaseModel):
+    date: Any
+    amount: float
+
+
+class ReturnBridge(BaseModel):
+    entry_ev: float
+    entry_net_debt: float
+    transaction_fees: float = 0.0
+    rollover_or_management_equity: float = 0.0
+    entry_equity_value: float
+    sponsor_equity_invested: float
+    exit_ev: float
+    exit_net_debt: float
+    exit_equity_value: float
+    dividends: float = 0.0
+    sponsor_proceeds: float
+    moic: float | None
+    irr: float | None
+    sponsor_cash_flows: list[SponsorCashFlow] = Field(default_factory=list)
+    missing_items: list[str] = Field(default_factory=list)
+
+
 class ReturnModel(BaseModel):
     irr: MetricValue | None = None
     moic: MetricValue | None = None
     entry_ev: MetricValue | None = None
     exit_ev: MetricValue | None = None
     python_outputs: PythonEngineOutputs | None = None
+    bridge: ReturnBridge | None = None
     status: str = "Excel sourced; Python engine available for selected assumptions"
 
 

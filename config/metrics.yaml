@@ -5,7 +5,7 @@ metrics:
     cell: P4
     period: "2030"
     unit: "USD mm"
-    label: "集团总营收"
+    label: "Revenue"
     extraction_method: configured_cell
   ebitda:
     display_name: EBITDA
@@ -21,7 +21,7 @@ metrics:
     cell: T87
     period: "2030"
     unit: "USD mm"
-    label: "净债务"
+    label: "Net Debt"
     extraction_method: configured_cell
   capex:
     display_name: Capex
@@ -29,7 +29,7 @@ metrics:
     cell: P6
     period: "2030"
     unit: "USD k"
-    label: "合计资本支出"
+    label: "Total Capex"
     extraction_method: configured_cell
   cash_flow:
     display_name: Cash Flow
@@ -37,7 +37,7 @@ metrics:
     cell: T26
     period: "2030"
     unit: "USD mm"
-    label: "净现金流"
+    label: "Net Cash Flow"
     extraction_method: configured_cell
   entry_ev:
     display_name: Entry EV
@@ -45,7 +45,23 @@ metrics:
     cell: G19
     period: "Entry"
     unit: "USD mm"
-    label: "企业价值"
+    label: "Entry Enterprise Value"
+    extraction_method: configured_cell
+  entry_equity_value:
+    display_name: Entry Equity Value
+    sheet_role: return_model
+    cell: G24
+    period: "Entry"
+    unit: "USD mm"
+    label: "Entry Equity Value"
+    extraction_method: configured_cell
+  sponsor_equity_invested:
+    display_name: Sponsor Equity Invested
+    sheet_role: return_model
+    cell: L101
+    period: "Entry"
+    unit: "USD mm"
+    label: "Sponsor Net Cash Flow"
     extraction_method: configured_cell
   exit_ev:
     display_name: Exit EV
@@ -53,7 +69,23 @@ metrics:
     cell: R89
     period: "Exit"
     unit: "USD mm"
-    label: "企业价值"
+    label: "Exit Enterprise Value"
+    extraction_method: configured_cell
+  exit_equity_value:
+    display_name: Exit Equity Value
+    sheet_role: return_model
+    cell: R93
+    period: "Exit"
+    unit: "USD mm"
+    label: "Exit Equity Value"
+    extraction_method: configured_cell
+  sponsor_proceeds:
+    display_name: Sponsor Proceeds
+    sheet_role: return_model
+    cell: R101
+    period: "Exit"
+    unit: "USD mm"
+    label: "Sponsor Net Cash Flow"
     extraction_method: configured_cell
   irr:
     display_name: IRR

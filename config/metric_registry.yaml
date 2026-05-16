@@ -65,6 +65,28 @@ metrics:
     sign_convention: enterprise_value_positive
     tolerance: 0.01
     required_for_dashboard: true
+  - metric_id: entry_equity_value
+    display_name: Entry Equity Value
+    category: returns
+    period: Entry
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: G24
+    unit: USD mm
+    scale: 1.0
+    sign_convention: equity_value_positive
+    tolerance: 0.01
+    required_for_dashboard: false
+  - metric_id: sponsor_equity_invested
+    display_name: Sponsor Equity Invested
+    category: returns
+    period: Entry
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: L101
+    unit: USD mm
+    scale: 1.0
+    sign_convention: cash_outflow_negative
+    tolerance: 0.01
+    required_for_dashboard: false
   - metric_id: exit_ev
     display_name: Exit EV
     category: returns
@@ -76,6 +98,28 @@ metrics:
     sign_convention: enterprise_value_positive
     tolerance: 0.01
     required_for_dashboard: true
+  - metric_id: exit_equity_value
+    display_name: Exit Equity Value
+    category: returns
+    period: Exit
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: R93
+    unit: USD mm
+    scale: 1.0
+    sign_convention: equity_value_positive
+    tolerance: 0.01
+    required_for_dashboard: false
+  - metric_id: sponsor_proceeds
+    display_name: Sponsor Proceeds
+    category: returns
+    period: Exit
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: R101
+    unit: USD mm
+    scale: 1.0
+    sign_convention: cash_inflow_positive
+    tolerance: 0.01
+    required_for_dashboard: false
   - metric_id: irr
     display_name: IRR
     category: returns
@@ -85,7 +129,7 @@ metrics:
     unit: "%"
     scale: 1.0
     sign_convention: positive_is_better
-    tolerance: 0.05
+    tolerance: 0.01
     required_for_dashboard: true
   - metric_id: moic
     display_name: MOIC
@@ -96,6 +140,5 @@ metrics:
     unit: x
     scale: 1.0
     sign_convention: positive_is_better
-    tolerance: 0.05
+    tolerance: 0.01
     required_for_dashboard: true
-

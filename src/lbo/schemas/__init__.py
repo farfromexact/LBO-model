@@ -8,8 +8,10 @@ from lbo.schemas.models import (
     ModelSnapshot,
     PythonEngineOutputs,
     ReconciliationItem,
+    ReturnBridge,
     ReturnModel,
     SourceRef,
+    SponsorCashFlow,
     SensitivityTable,
     ValueCreationBridge,
 )
@@ -24,8 +26,10 @@ __all__ = [
     "ModelSnapshot",
     "PythonEngineOutputs",
     "ReconciliationItem",
+    "ReturnBridge",
     "ReturnModel",
     "SourceRef",
+    "SponsorCashFlow",
     "SensitivityTable",
     "ValueCreationBridge",
 ]

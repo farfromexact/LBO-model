@@ -8,6 +8,8 @@ def test_load_metric_registry() -> None:
 
     validate_registry(registry)
     assert "irr" in registry
+    assert "entry_equity_value" in registry
+    assert "sponsor_proceeds" in registry
     assert registry["irr"].tolerance > 0
     assert registry["exit_ev"].source_cell == "R89"
 
@@ -22,4 +24,3 @@ def test_get_metric_source() -> None:
     source = get_metric_source("moic", load_metric_registry())
 
     assert source["source_cell"] == "G103"
-
