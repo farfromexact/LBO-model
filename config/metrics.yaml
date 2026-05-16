@@ -1,0 +1,106 @@
+metrics:
+  revenue:
+    display_name: Revenue
+    sheet_role: financial_output
+    cell: P4
+    period: "2030"
+    unit: "USD mm"
+    label: "集团总营收"
+    extraction_method: configured_cell
+  ebitda:
+    display_name: EBITDA
+    sheet_role: financial_output
+    cell: P96
+    period: "2030"
+    unit: "USD mm"
+    label: "EBITDA"
+    extraction_method: configured_cell
+  net_debt:
+    display_name: Net Debt
+    sheet_role: balance_sheet
+    cell: T87
+    period: "2030"
+    unit: "USD mm"
+    label: "净债务"
+    extraction_method: configured_cell
+  capex:
+    display_name: Capex
+    sheet_role: capex
+    cell: P6
+    period: "2030"
+    unit: "USD k"
+    label: "合计资本支出"
+    extraction_method: configured_cell
+  cash_flow:
+    display_name: Cash Flow
+    sheet_role: cash_flow
+    cell: T26
+    period: "2030"
+    unit: "USD mm"
+    label: "净现金流"
+    extraction_method: configured_cell
+  entry_ev:
+    display_name: Entry EV
+    sheet_role: return_model
+    cell: G19
+    period: "Entry"
+    unit: "USD mm"
+    label: "企业价值"
+    extraction_method: configured_cell
+  exit_ev:
+    display_name: Exit EV
+    sheet_role: return_model
+    cell: R89
+    period: "Exit"
+    unit: "USD mm"
+    label: "企业价值"
+    extraction_method: configured_cell
+  irr:
+    display_name: IRR
+    sheet_role: return_model
+    cell: G104
+    period: "Exit"
+    unit: "%"
+    label: "IRR"
+    extraction_method: configured_cell
+  moic:
+    display_name: MOIC
+    sheet_role: return_model
+    cell: G103
+    period: "Exit"
+    unit: "x"
+    label: "MOC"
+    extraction_method: configured_cell
+
+tables:
+  revenue:
+    display_name: Revenue
+    sheet_role: financial_output
+    range: K4:P4
+    periods: ["2025", "2026", "2027", "2028", "2029", "2030"]
+    unit: "USD mm"
+  ebitda:
+    display_name: EBITDA
+    sheet_role: financial_output
+    range: K96:P96
+    periods: ["2025", "2026", "2027", "2028", "2029", "2030"]
+    unit: "USD mm"
+  net_debt:
+    display_name: Net Debt
+    sheet_role: balance_sheet
+    range: P87:T87
+    periods: ["2026", "2027", "2028", "2029", "2030"]
+    unit: "USD mm"
+  capex:
+    display_name: Capex
+    sheet_role: capex
+    range: K6:P6
+    periods: ["2025", "2026", "2027", "2028", "2029", "2030"]
+    unit: "USD k"
+  cash_flow:
+    display_name: Cash Flow
+    sheet_role: cash_flow
+    range: P26:T26
+    periods: ["2026", "2027", "2028", "2029", "2030"]
+    unit: "USD mm"
+

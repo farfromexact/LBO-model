@@ -1,0 +1,36 @@
+roles:
+  financial_output:
+    required: true
+    aliases:
+      - Output_财务
+      - 财务预测
+      - 利润表
+      - Income Statement
+      - Financial Output
+  balance_sheet:
+    required: true
+    aliases:
+      - 资产负债表
+      - Balance Sheet
+      - BS
+  cash_flow:
+    required: true
+    aliases:
+      - 现金流量表
+      - Cash Flow
+      - CF
+  capex:
+    required: true
+    aliases:
+      - Output_产能
+      - 产能及CAPEX
+      - CAPEX
+      - Capex
+  return_model:
+    required: true
+    aliases:
+      - 回报测算-EVEBITDA（核心假设）
+      - 回报测算
+      - Return Model
+      - EVEBITDA
+

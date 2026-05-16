@@ -1,0 +1,9 @@
+pandas
+openpyxl
+pydantic>=2
+streamlit
+plotly
+pyxirr
+pytest
+PyYAML
+
