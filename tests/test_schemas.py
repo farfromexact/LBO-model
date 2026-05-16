@@ -52,15 +52,26 @@ def test_model_snapshot_validates_traceable_metrics() -> None:
             ReconciliationItem(
                 metric_key="revenue",
                 metric_name="Revenue",
+                period="2030",
                 excel_value=100,
                 python_value=None,
+                variance=None,
+                variance_pct=None,
+                tolerance=0.01,
+                status="Pending",
+                unit="USD mm",
+                scale=1.0,
+                sign_convention="positive_is_better",
+                required_for_dashboard=True,
+                source_sheet="Output_财务",
+                source_cell="P4",
                 source=source_ref(),
             )
         ],
     )
 
     assert snapshot.metrics["revenue"].source.display == "Output_财务!P4"
-    assert snapshot.reconciliation[0].status == "Pending Python engine"
+    assert snapshot.reconciliation[0].status == "Pending"
 
 
 def test_financial_statement_table_width_validation() -> None:

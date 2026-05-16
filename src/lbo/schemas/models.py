@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 ScenarioName = Literal["Base", "Optimistic", "Pessimistic"]
+ReconciliationStatus = Literal["OK", "Warning", "Critical", "Pending"]
 
 
 class SourceRef(BaseModel):
@@ -195,10 +196,19 @@ class ReturnModel(BaseModel):
 class ReconciliationItem(BaseModel):
     metric_key: str
     metric_name: str
+    period: str
     excel_value: Any = None
     python_value: Any = None
     variance: float | None = None
-    status: str = "Pending Python engine"
+    variance_pct: float | None = None
+    tolerance: float
+    status: ReconciliationStatus = "Pending"
+    unit: str
+    scale: float
+    sign_convention: str
+    required_for_dashboard: bool
+    source_sheet: str
+    source_cell: str
     source: SourceRef
 
 

@@ -23,7 +23,13 @@ if snapshot is None:
     st.stop()
 
 rows = reconciliation_rows(snapshot)
-st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+df = pd.DataFrame(rows)
+st.dataframe(df, use_container_width=True, hide_index=True)
 
-st.caption("Python values are placeholders in v1. The calculation engine will populate them in later phases.")
-
+status_counts = df["Status"].value_counts().to_dict() if not df.empty else {}
+st.caption(
+    " | ".join(
+        f"{status}: {status_counts.get(status, 0)}"
+        for status in ["OK", "Warning", "Critical", "Pending"]
+    )
+)

@@ -1,0 +1,101 @@
+metrics:
+  - metric_id: revenue
+    display_name: Revenue
+    category: operating
+    period: "2030"
+    source_sheet: Output_财务
+    source_cell: P4
+    unit: USD mm
+    scale: 1.0
+    sign_convention: positive_is_better
+    tolerance: 0.01
+    required_for_dashboard: true
+  - metric_id: ebitda
+    display_name: EBITDA
+    category: operating
+    period: "2030"
+    source_sheet: Output_财务
+    source_cell: P96
+    unit: USD mm
+    scale: 1.0
+    sign_convention: positive_is_better
+    tolerance: 0.01
+    required_for_dashboard: true
+  - metric_id: net_debt
+    display_name: Net Debt
+    category: leverage
+    period: "2030"
+    source_sheet: 资产负债表
+    source_cell: T87
+    unit: USD mm
+    scale: 1.0
+    sign_convention: debt_positive
+    tolerance: 0.02
+    required_for_dashboard: true
+  - metric_id: capex
+    display_name: Capex
+    category: operating
+    period: "2030"
+    source_sheet: Output_产能
+    source_cell: P6
+    unit: USD k
+    scale: 1.0
+    sign_convention: cash_outflow_positive
+    tolerance: 0.02
+    required_for_dashboard: true
+  - metric_id: cash_flow
+    display_name: Cash Flow
+    category: cash_flow
+    period: "2030"
+    source_sheet: 现金流量表
+    source_cell: T26
+    unit: USD mm
+    scale: 1.0
+    sign_convention: positive_is_better
+    tolerance: 0.02
+    required_for_dashboard: true
+  - metric_id: entry_ev
+    display_name: Entry EV
+    category: returns
+    period: Entry
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: G19
+    unit: USD mm
+    scale: 1.0
+    sign_convention: enterprise_value_positive
+    tolerance: 0.01
+    required_for_dashboard: true
+  - metric_id: exit_ev
+    display_name: Exit EV
+    category: returns
+    period: Exit
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: R89
+    unit: USD mm
+    scale: 1.0
+    sign_convention: enterprise_value_positive
+    tolerance: 0.01
+    required_for_dashboard: true
+  - metric_id: irr
+    display_name: IRR
+    category: returns
+    period: Exit
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: G104
+    unit: "%"
+    scale: 1.0
+    sign_convention: positive_is_better
+    tolerance: 0.05
+    required_for_dashboard: true
+  - metric_id: moic
+    display_name: MOIC
+    category: returns
+    period: Exit
+    source_sheet: 回报测算-EVEBITDA（核心假设）
+    source_cell: G103
+    unit: x
+    scale: 1.0
+    sign_convention: positive_is_better
+    tolerance: 0.05
+    required_for_dashboard: true
+

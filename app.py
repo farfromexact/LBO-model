@@ -33,6 +33,25 @@ def format_metric(value: object, unit: str | None = None) -> str:
     return str(value)
 
 
+def reconciliation_counts(snapshot) -> dict[str, int]:
+    counts = {"OK": 0, "Warning": 0, "Critical": 0, "Pending": 0}
+    for item in snapshot.reconciliation:
+        counts[item.status] = counts.get(item.status, 0) + 1
+    return counts
+
+
+def metric_status(snapshot, metric_id: str) -> str:
+    item = snapshot.reconciliation_by_metric.get(metric_id)
+    return item.status if item is not None else "Pending"
+
+
+def guarded_metric(column, label: str, value: object, unit: str | None, status: str) -> None:
+    suffix = "" if status == "OK" else f" ({status})"
+    column.metric(label + suffix, format_metric(value, unit))
+    if status != "OK":
+        column.caption(f"Reconciliation status: {status}")
+
+
 st.set_page_config(page_title="LBO Dashboard", layout="wide")
 st.title("LBO Dashboard")
 
@@ -109,13 +128,33 @@ if engine is None:
     st.error("Python engine did not return outputs.")
     st.stop()
 
+counts = reconciliation_counts(snapshot)
+required_items = [item for item in snapshot.reconciliation if item.required_for_dashboard]
+required_done = [item for item in required_items if item.status != "Pending"]
+critical_items = [item for item in required_items if item.status == "Critical"]
+ok_required = [item for item in required_items if item.status == "OK"]
+confidence = 0.0 if not required_items else len(ok_required) / len(required_items)
+
+st.subheader("Model Status")
+status_cols = st.columns(4)
+status_cols[0].metric("Model Confidence", f"{confidence:.0%}")
+status_cols[1].metric("Reconciled Metrics", f"{len(required_done)}/{len(required_items)}")
+status_cols[2].metric("Critical", counts["Critical"])
+status_cols[3].metric("Pending", counts["Pending"])
+if critical_items:
+    st.error("Critical differences: " + ", ".join(item.metric_name for item in critical_items))
+elif counts["Pending"]:
+    st.warning(f"{counts['Pending']} metrics are pending Python reconciliation.")
+else:
+    st.success("All required dashboard metrics are reconciled within tolerance.")
+
 st.subheader("Deal Snapshot")
 cols = st.columns(5)
-cols[0].metric("IRR", format_metric(engine.irr, "%"))
-cols[1].metric("MOIC", format_metric(engine.moic, "x"))
-cols[2].metric("Exit Equity Value", format_metric(engine.exit_equity_value))
-cols[3].metric("Exit EV", format_metric(engine.exit_ev))
-cols[4].metric("Net Debt / EBITDA", format_metric(engine.net_debt_to_ebitda, "x"))
+guarded_metric(cols[0], "IRR", engine.irr, "%", metric_status(snapshot, "irr"))
+guarded_metric(cols[1], "MOIC", engine.moic, "x", metric_status(snapshot, "moic"))
+guarded_metric(cols[2], "Exit Equity Value", engine.exit_equity_value, None, metric_status(snapshot, "exit_ev"))
+guarded_metric(cols[3], "Exit EV", engine.exit_ev, None, metric_status(snapshot, "exit_ev"))
+guarded_metric(cols[4], "Net Debt / EBITDA", engine.net_debt_to_ebitda, "x", metric_status(snapshot, "net_debt"))
 
 st.divider()
 st.subheader("1. Value Creation Bridge")
