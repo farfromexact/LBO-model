@@ -72,6 +72,10 @@ def slider_number(label: str, value: float | None, min_value: float, max_value: 
     return st.slider(label, min_value=min_value, max_value=max_value, value=float(value), step=step, help=help_text)
 
 
+def set_ebitda_growth_delta(value: float) -> None:
+    st.session_state["ebitda_growth_delta"] = value
+
+
 st.set_page_config(page_title="LBO / Investment Model Analyzer", layout="wide")
 st.title("LBO / Investment Model Analyzer")
 
@@ -113,7 +117,20 @@ with st.sidebar:
     st.subheader("Scenario Adjustments")
     entry_multiple = slider_number("Entry EV / EBITDA", default_adjustments.entry_multiple, 0.0, 25.0, 0.1, "Uses extracted entry EBITDA and implied entry net debt.")
     exit_multiple = slider_number("Exit EV / EBITDA", default_adjustments.exit_multiple, 0.0, 30.0, 0.1, "Uses extracted exit EBITDA as the base.")
-    ebitda_growth_delta = st.slider("Exit EBITDA adjustment", -0.50, 0.50, 0.0, 0.01, help="Applied to extracted exit EBITDA.")
+    st.caption("EBITDA growth adjustment")
+    preset_cols = st.columns(3)
+    preset_cols[0].button("-5%", on_click=set_ebitda_growth_delta, args=(-0.05,), use_container_width=True)
+    preset_cols[1].button("Base", on_click=set_ebitda_growth_delta, args=(0.0,), use_container_width=True)
+    preset_cols[2].button("+5%", on_click=set_ebitda_growth_delta, args=(0.05,), use_container_width=True)
+    ebitda_growth_delta = st.slider(
+        "EBITDA growth adjustment",
+        -0.50,
+        0.50,
+        st.session_state.get("ebitda_growth_delta", 0.0),
+        0.01,
+        key="ebitda_growth_delta",
+        help="Applied to extracted exit EBITDA before calculating exit EV and returns.",
+    )
     exit_net_debt = slider_number("Exit net debt", default_adjustments.exit_net_debt, -5000.0, 10000.0, 10.0, "Positive means net debt; negative means net cash.")
     sponsor_ownership = slider_number("Sponsor ownership", default_adjustments.sponsor_ownership, 0.0, 1.0, 0.01, "Inferred from sponsor proceeds / exit equity or sponsor invested / entry equity.")
     cash_distribution = st.number_input("Dividends / cash distribution", value=0.0, step=10.0)
