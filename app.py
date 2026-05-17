@@ -11,19 +11,13 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from lbo.charts import debt_paydown_waterfall, operating_trend_chart, sensitivity_heatmap, value_creation_bridge_chart
-from lbo.engine import build_snapshot, load_scenario_defaults
-from lbo.io.excel_loader import WorkbookLoadError
-from lbo.schemas import EngineAssumptions
+from lbo.adapters import GenericExcelAdapter, detect_best_adapter
+from lbo.engine import generate_sop_analysis, run_standardized_sensitivity
 
 
-def default_workbook_path() -> Path | None:
-    return next((ROOT / "examples").glob("CPE*20260317.xlsx"), None)
-
-
-def format_metric(value: object, unit: str | None = None) -> str:
+def format_value(value: object, unit: str | None = None) -> str:
     if value is None:
-        return "N/A"
+        return "Missing"
     if isinstance(value, float):
         if unit == "%":
             return f"{value:.1%}"
@@ -33,162 +27,100 @@ def format_metric(value: object, unit: str | None = None) -> str:
     return str(value)
 
 
-def reconciliation_counts(snapshot) -> dict[str, int]:
-    counts = {"OK": 0, "Warning": 0, "Critical": 0, "Pending": 0}
-    for item in snapshot.reconciliation:
-        counts[item.status] = counts.get(item.status, 0) + 1
-    return counts
+st.set_page_config(page_title="LBO / Investment Model Analyzer", layout="wide")
+st.title("LBO / Investment Model Analyzer")
 
+uploaded = st.file_uploader("Upload Excel workbook", type=["xlsx", "xlsm"])
+if uploaded is None:
+    st.info("Upload an Excel workbook to analyze. The app will convert it into a StandardModel before any dashboard or SOP output is generated.")
+    st.stop()
 
-def metric_status(snapshot, metric_id: str) -> str:
-    item = snapshot.reconciliation_by_metric.get(metric_id)
-    return item.status if item is not None else "Pending"
+workbook_bytes = uploaded.getvalue()
+adapters = [GenericExcelAdapter()]
+match = detect_best_adapter(workbook_bytes, adapters)
 
+st.subheader("Workbook Adapter")
+adapter_cols = st.columns(3)
+adapter_cols[0].metric("Detected Template", match.detected_template)
+adapter_cols[1].metric("Adapter", match.adapter_name)
+adapter_cols[2].metric("Confidence", f"{match.confidence:.0%}")
+if not match.can_handle:
+    st.error("No adapter can confidently handle this workbook.")
+    st.write(match.warnings)
+    st.stop()
 
-def guarded_metric(column, label: str, value: object, unit: str | None, status: str) -> None:
-    suffix = "" if status == "OK" else f" ({status})"
-    column.metric(label + suffix, format_metric(value, unit))
-    if status != "OK":
-        column.caption(f"Reconciliation status: {status}")
+adapter = next(adapter for adapter in adapters if adapter.adapter_name == match.adapter_name)
+standard_model = adapter.extract(workbook_bytes)
+sop_result = generate_sop_analysis(standard_model)
+sensitivity = run_standardized_sensitivity(standard_model)
 
+st.session_state["standard_model"] = standard_model
+st.session_state["sop_result"] = sop_result
 
-st.set_page_config(page_title="LBO Dashboard", layout="wide")
-st.title("LBO Dashboard")
+st.subheader("Extraction Coverage")
+coverage_cols = st.columns(4)
+coverage_cols[0].metric("Coverage", f"{standard_model.metadata.extraction_coverage:.0%}")
+coverage_cols[1].metric("Extracted Metrics", f"{standard_model.extracted_metric_count}/{standard_model.required_metric_count}")
+coverage_cols[2].metric("Missing Fields", len(standard_model.missing_fields))
+coverage_cols[3].metric("Warnings", len(standard_model.warnings))
 
-scenario = st.selectbox("Scenario", ["Base", "Optimistic", "Pessimistic"], index=0)
+if standard_model.missing_fields:
+    st.warning("Missing fields: " + ", ".join(standard_model.missing_fields))
+if standard_model.warnings:
+    for warning in standard_model.warnings:
+        st.warning(warning)
 
-defaults = load_scenario_defaults(scenario)
-with st.sidebar:
-    st.header("Python Engine")
-    st.caption("MVP 0.2 assumptions")
-    entry_multiple = st.number_input("Entry multiple", min_value=0.1, max_value=50.0, value=defaults.entry_multiple, step=0.1)
-    exit_multiple = st.number_input("Exit multiple", min_value=0.1, max_value=50.0, value=defaults.exit_multiple, step=0.1)
-    exit_year = st.number_input("Exit year", min_value=2025, max_value=2050, value=defaults.exit_year, step=1)
-    debt_interest_rate = st.slider(
-        "Debt interest rate",
-        min_value=0.0,
-        max_value=0.30,
-        value=defaults.debt_interest_rate,
-        step=0.005,
-        format="%.3f",
-    )
-    debt_repayment_speed = st.slider(
-        "Debt repayment speed",
-        min_value=0.0,
-        max_value=1.0,
-        value=defaults.debt_repayment_speed,
-        step=0.05,
-    )
-    ebitda_growth = st.slider(
-        "EBITDA growth",
-        min_value=-0.20,
-        max_value=0.50,
-        value=defaults.ebitda_growth,
-        step=0.01,
-    )
-    capex_intensity = st.slider(
-        "Capex intensity",
-        min_value=0.0,
-        max_value=0.50,
-        value=defaults.capex_intensity,
-        step=0.005,
-        format="%.3f",
-    )
-    tax_rate = st.slider("Tax rate", min_value=0.0, max_value=0.50, value=defaults.tax_rate, step=0.01)
-
-engine_assumptions = EngineAssumptions(
-    scenario=scenario,
-    entry_multiple=entry_multiple,
-    exit_multiple=exit_multiple,
-    exit_year=int(exit_year),
-    debt_interest_rate=debt_interest_rate,
-    debt_repayment_speed=debt_repayment_speed,
-    ebitda_growth=ebitda_growth,
-    capex_intensity=capex_intensity,
-    tax_rate=tax_rate,
+st.subheader("SOP Output")
+section_tabs = st.tabs(
+    [
+        "Deal Summary",
+        "Data Quality",
+        "Key Assumptions",
+        "Operating Performance",
+        "Return Analysis",
+        "Value Creation",
+        "Risk Flags",
+        "Model Audit",
+    ]
 )
 
-workbook_path = default_workbook_path()
-if workbook_path is None or not workbook_path.exists():
-    st.error("Default CPE workbook was not found.")
-    st.caption(f"Expected path pattern: {ROOT / 'examples' / 'CPE*20260317.xlsx'}")
-    st.stop()
+sections = [
+    sop_result.deal_summary,
+    sop_result.data_quality,
+    sop_result.key_assumptions,
+    sop_result.operating_performance,
+    sop_result.return_analysis,
+    sop_result.value_creation_bridge,
+    sop_result.risk_flags,
+    sop_result.model_audit,
+]
+for tab, lines in zip(section_tabs, sections):
+    with tab:
+        if lines:
+            for line in lines:
+                st.write(f"- {line}")
+        else:
+            st.write("No findings.")
 
-try:
-    snapshot = build_snapshot(workbook_path, scenario=scenario, engine_assumptions=engine_assumptions)
-except WorkbookLoadError as exc:
-    st.error(str(exc))
-    st.stop()
-
-st.session_state["model_snapshot"] = snapshot
-st.caption(f"Workbook: {snapshot.workbook_name} | Scenario: {snapshot.scenario}")
-
-engine = snapshot.python_engine
-if engine is None:
-    st.error("Python engine did not return outputs.")
-    st.stop()
-
-counts = reconciliation_counts(snapshot)
-required_items = [item for item in snapshot.reconciliation if item.required_for_dashboard]
-required_done = [item for item in required_items if item.status != "Pending"]
-critical_items = [item for item in required_items if item.status == "Critical"]
-ok_required = [item for item in required_items if item.status == "OK"]
-confidence = 0.0 if not required_items else len(ok_required) / len(required_items)
-
-st.subheader("Model Status")
-status_cols = st.columns(4)
-status_cols[0].metric("Model Confidence", f"{confidence:.0%}")
-status_cols[1].metric("Reconciled Metrics", f"{len(required_done)}/{len(required_items)}")
-status_cols[2].metric("Critical", counts["Critical"])
-status_cols[3].metric("Pending", counts["Pending"])
-if critical_items:
-    st.error("Critical differences: " + ", ".join(item.metric_name for item in critical_items))
-elif counts["Pending"]:
-    st.warning(f"{counts['Pending']} metrics are pending Python reconciliation.")
+st.subheader("Sensitivity Results")
+if sensitivity.warnings:
+    for warning in sensitivity.warnings:
+        st.warning(warning)
 else:
-    st.success("All required dashboard metrics are reconciled within tolerance.")
+    st.dataframe(pd.DataFrame([case.model_dump() for case in sensitivity.cases]), use_container_width=True, hide_index=True)
 
-st.subheader("Deal Snapshot")
-cols = st.columns(5)
-guarded_metric(cols[0], "IRR", engine.irr, "%", metric_status(snapshot, "irr"))
-guarded_metric(cols[1], "MOIC", engine.moic, "x", metric_status(snapshot, "moic"))
-guarded_metric(cols[2], "Exit Equity Value", engine.exit_equity_value, None, metric_status(snapshot, "exit_ev"))
-guarded_metric(cols[3], "Exit EV", engine.exit_ev, None, metric_status(snapshot, "exit_ev"))
-guarded_metric(cols[4], "Net Debt / EBITDA", engine.net_debt_to_ebitda, "x", metric_status(snapshot, "net_debt"))
-
-st.divider()
-st.subheader("1. Value Creation Bridge")
-st.plotly_chart(value_creation_bridge_chart(engine.value_creation_bridge), use_container_width=True)
-st.caption("Core LBO view: entry equity value to exit equity value by EBITDA growth, multiple movement, deleveraging, and distributions.")
-
-st.divider()
-st.subheader("2. Debt Paydown Waterfall")
-st.plotly_chart(debt_paydown_waterfall(engine.debt_model), use_container_width=True)
-st.caption("Shows whether returns are driven by deleveraging or by exit multiple support.")
-
-st.divider()
-st.subheader("3. Revenue / EBITDA / FCF Trend")
-st.plotly_chart(operating_trend_chart(snapshot.tables), use_container_width=True)
-st.caption("Validates the operating story behind the return model.")
-
-st.divider()
-st.subheader("4. Sensitivity Heatmap")
-st.plotly_chart(sensitivity_heatmap(engine.sensitivity), use_container_width=True)
-st.caption("IRR sensitivity across entry and exit multiples.")
-
-with st.expander("Audit: source sheets and extracted Excel values"):
-    st.dataframe(snapshot.core_sheets.as_rows(), use_container_width=True, hide_index=True)
-    if snapshot.core_sheets.missing_roles:
-        st.warning("Missing sheet roles: " + ", ".join(snapshot.core_sheets.missing_roles))
-
-    metric_rows = [
-        {
-            "Metric": metric.display_name,
-            "Excel Value": metric.value,
-            "Unit": metric.unit,
-            "Source": metric.source.display,
-            "Label": metric.source.label,
-        }
-        for metric in snapshot.metrics.values()
-    ]
-    st.dataframe(pd.DataFrame(metric_rows), use_container_width=True, hide_index=True)
+st.subheader("Missing Fields and Warnings")
+audit_rows = [
+    {
+        "Metric": metric.display_name,
+        "Value": metric.value,
+        "Period": metric.period,
+        "Unit": metric.unit,
+        "Confidence": metric.confidence,
+        "Missing Reason": metric.missing_reason,
+        "Source Sheet": metric.source_sheet,
+        "Source Cell": metric.source_cell,
+    }
+    for metric in standard_model.metrics.values()
+]
+st.dataframe(pd.DataFrame(audit_rows), use_container_width=True, hide_index=True)
