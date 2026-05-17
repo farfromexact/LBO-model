@@ -31,11 +31,18 @@ st.set_page_config(page_title="LBO / Investment Model Analyzer", layout="wide")
 st.title("LBO / Investment Model Analyzer")
 
 uploaded = st.file_uploader("Upload Excel workbook", type=["xlsx", "xlsm"])
-if uploaded is None:
+if uploaded is not None:
+    st.session_state["workbook_bytes"] = uploaded.getvalue()
+    st.session_state["workbook_name"] = uploaded.name
+
+workbook_bytes = st.session_state.get("workbook_bytes")
+workbook_name = st.session_state.get("workbook_name")
+
+if workbook_bytes is None:
     st.info("Upload an Excel workbook to analyze. The app will convert it into a StandardModel before any dashboard or SOP output is generated.")
     st.stop()
 
-workbook_bytes = uploaded.getvalue()
+st.caption(f"Workbook: {workbook_name}")
 adapters = [GenericExcelAdapter()]
 match = detect_best_adapter(workbook_bytes, adapters)
 

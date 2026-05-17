@@ -75,11 +75,25 @@ class GenericExcelAdapter(BaseWorkbookAdapter):
         return_sheet = _find_sheet(wb, ["回报", "return", "ev/ebitda", "evebitda"])
 
         metrics = {
-            "revenue": _extract_series_metric(financial_sheet, "revenue", "Revenue", ["集团总营收", "营业收入", "Revenue"]),
-            "ebitda": _extract_series_metric(financial_sheet, "ebitda", "EBITDA", ["EBITDA"]),
-            "net_debt": _extract_series_metric(balance_sheet, "net_debt", "Net Debt", ["净债务", "Net Debt"]),
-            "capex": _extract_series_metric(capex_sheet, "capex", "Capex", ["合计资本支出", "Total Capex"]),
-            "cash_flow": _extract_series_metric(cash_flow_sheet, "cash_flow", "Cash Flow", ["净现金流", "经营性现金流", "Free Cash Flow", "FCF"]),
+            "revenue": _extract_series_metric(financial_sheet, "revenue", "Revenue", ["集团总营收", "营业收入", "总收入", "收入", "Revenue", "Sales"]),
+            "ebitda": _extract_series_metric(financial_sheet, "ebitda", "EBITDA", ["正常化EBITDA", "EBITDA"]),
+            "net_debt": _extract_first_available_series(
+                [
+                    (balance_sheet, ["净债务", "净负债", "净负债/(现金)", "Net Debt"]),
+                    (financial_sheet, ["净负债/(现金)", "净负债", "净债务", "Net Debt"]),
+                ],
+                "net_debt",
+                "Net Debt",
+            ),
+            "capex": _extract_first_available_series(
+                [
+                    (capex_sheet, ["合计资本支出", "资本支出", "Total Capex", "Capex"]),
+                    (cash_flow_sheet, ["资本支出", "减：资本支出", "Capex"]),
+                ],
+                "capex",
+                "Capex",
+            ),
+            "cash_flow": _extract_series_metric(cash_flow_sheet, "cash_flow", "Cash Flow", ["自由现金流", "净现金流", "经营性现金流", "Free Cash Flow", "FCF"]),
         }
 
         valuation = _extract_valuation(return_sheet, metrics)
@@ -211,6 +225,20 @@ def _extract_series_metric(
     )
 
 
+def _extract_first_available_series(
+    candidates: list[tuple[Worksheet | None, list[str]]],
+    metric_id: str,
+    display_name: str,
+) -> StandardMetric:
+    best_missing: StandardMetric | None = None
+    for worksheet, labels in candidates:
+        metric = _extract_series_metric(worksheet, metric_id, display_name, labels)
+        if metric.is_available:
+            return metric
+        best_missing = best_missing or metric
+    return best_missing or _missing_metric(metric_id, display_name, "no candidate sheets provided")
+
+
 def _extract_valuation(return_sheet: Worksheet | None, metrics: dict[str, StandardMetric]) -> ValuationSummary:
     if return_sheet is None:
         missing = _missing_metric("valuation", "Valuation", "return model sheet not detected")
@@ -223,10 +251,10 @@ def _extract_valuation(return_sheet: Worksheet | None, metrics: dict[str, Standa
         )
 
     return ValuationSummary(
-        entry_ev=_metric_from_cell(return_sheet, "entry_ev", "Entry EV", "G19"),
-        entry_equity_value=_metric_from_cell(return_sheet, "entry_equity_value", "Entry Equity Value", "G24"),
-        exit_ev=_metric_from_cell(return_sheet, "exit_ev", "Exit EV", "R89"),
-        exit_equity_value=_metric_from_cell(return_sheet, "exit_equity_value", "Exit Equity Value", "R93"),
+        entry_ev=_metric_from_cell_or_label(return_sheet, "entry_ev", "Entry EV", "G19", ["Sylvan的总企业价值", "企业价值", "Entry EV", "Enterprise Value"]),
+        entry_equity_value=_metric_from_cell_or_label(return_sheet, "entry_equity_value", "Entry Equity Value", "G24", ["Sylvan的隐含股权价值", "交易股权价值", "股权价值", "Entry Equity Value"]),
+        exit_ev=_metric_from_cell_or_label(return_sheet, "exit_ev", "Exit EV", "R89", ["隐含退出时企业价值", "Exit EV", "Exit Enterprise Value"]),
+        exit_equity_value=_metric_from_cell_or_label(return_sheet, "exit_equity_value", "Exit Equity Value", "R93", ["隐含退出时股权价值", "Exit Equity Value"]),
         net_debt=metrics.get("net_debt", _missing_metric("net_debt", "Net Debt", "not extracted")),
     )
 
@@ -243,8 +271,8 @@ def _extract_returns(return_sheet: Worksheet | None) -> ReturnSummary:
         )
 
     cash_flows = _sponsor_cash_flows(return_sheet)
-    sponsor_equity = _metric_from_cell(return_sheet, "sponsor_equity_invested", "Sponsor Equity Invested", "L101")
-    sponsor_proceeds = _metric_from_cell(return_sheet, "sponsor_proceeds", "Sponsor Proceeds", "R101")
+    sponsor_equity = _metric_from_cell_or_label(return_sheet, "sponsor_equity_invested", "Sponsor Equity Invested", "L101", ["Novo直接投资", "Sponsor Equity Invested", "投资人净现金流"])
+    sponsor_proceeds = _metric_from_cell_or_label(return_sheet, "sponsor_proceeds", "Sponsor Proceeds", "R101", ["KKR延续型基金所占股权价值", "投资退出", "Sponsor Proceeds"])
     warnings: list[str] = []
 
     if len(cash_flows) < 2 or not any(cf["amount"] < 0 for cf in cash_flows) or not any(cf["amount"] > 0 for cf in cash_flows):
@@ -258,6 +286,10 @@ def _extract_returns(return_sheet: Worksheet | None) -> ReturnSummary:
         irr_value = _xirr(cash_flows)
         moic = StandardMetric(metric_id="moic", display_name="MOIC", value=moic_value, unit="x", confidence="high", source_sheet=return_sheet.title, source_cell="L101:R101")
         irr = StandardMetric(metric_id="irr", display_name="IRR", value=irr_value, unit="%", confidence="high", source_sheet=return_sheet.title, source_cell="L101:R101")
+    if not moic.is_available:
+        moic = _metric_from_label(return_sheet, "moic", "MOIC", ["净投资回报倍数", "MOC", "MOIC"], unit="x")
+    if not irr.is_available:
+        irr = _metric_from_label(return_sheet, "irr", "IRR", ["净内部收益率", "IRR"], unit="%")
 
     return ReturnSummary(
         moic=moic,
@@ -331,15 +363,66 @@ def _metric_from_cell(ws: Worksheet, metric_id: str, display_name: str, cell_ref
     )
 
 
-def _find_label_cell(ws: Worksheet, labels: list[str]) -> Cell | None:
-    normalized_labels = [label.casefold() for label in labels]
-    for row in ws.iter_rows():
-        for cell in row:
-            if not isinstance(cell.value, str):
-                continue
-            value = cell.value.casefold().strip()
-            if any(label in value for label in normalized_labels):
+def _metric_from_cell_or_label(
+    ws: Worksheet,
+    metric_id: str,
+    display_name: str,
+    cell_ref: str,
+    labels: list[str],
+) -> StandardMetric:
+    metric = _metric_from_label(ws, metric_id, display_name, labels)
+    if metric.is_available:
+        return metric
+    return _metric_from_cell(ws, metric_id, display_name, cell_ref)
+
+
+def _metric_from_label(
+    ws: Worksheet,
+    metric_id: str,
+    display_name: str,
+    labels: list[str],
+    unit: str | None = None,
+) -> StandardMetric:
+    label_cell = _find_label_cell(ws, labels)
+    if label_cell is None:
+        return _missing_metric(metric_id, display_name, "label not found", ws.title)
+    value_cell = _first_numeric_cell_to_right(ws, label_cell)
+    if value_cell is None:
+        return _missing_metric(metric_id, display_name, "no numeric value found next to label", ws.title, label_cell.coordinate)
+    return StandardMetric(
+        metric_id=metric_id,
+        display_name=display_name,
+        value=float(value_cell.value),
+        unit=unit,
+        source_sheet=ws.title,
+        source_cell=value_cell.coordinate,
+        confidence="low",
+        warnings=["Extracted by generic label fallback; verify selected scenario/case."],
+    )
+
+
+def _first_numeric_cell_to_right(ws: Worksheet, label_cell: Cell) -> Cell | None:
+    for row_offset in [0, 1, 2]:
+        row_number = label_cell.row + row_offset
+        if row_number > ws.max_row:
+            continue
+        for column in range(label_cell.column + 1, min(ws.max_column, label_cell.column + 12) + 1):
+            cell = ws.cell(row=row_number, column=column)
+            if isinstance(cell.value, (int, float)):
                 return cell
+    return None
+
+
+def _find_label_cell(ws: Worksheet, labels: list[str]) -> Cell | None:
+    for label in labels:
+        normalized_label = label.casefold()
+        for row in ws.iter_rows():
+            for cell in row:
+                if not isinstance(cell.value, str):
+                    continue
+                value = cell.value.casefold().strip()
+                if normalized_label in value:
+                    return cell
     return None
 
 
