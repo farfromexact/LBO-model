@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from lbo.engine.adjustment_engine import AdjustmentInputs, build_default_adjustments, run_adjusted_return_model
 from lbo.engine.sensitivity_engine import run_standardized_sensitivity
 from lbo.engine.sop_engine import generate_sop_analysis
 
 __all__ = [
     "build_snapshot",
+    "AdjustmentInputs",
+    "build_default_adjustments",
     "generate_sop_analysis",
     "load_scenario_defaults",
+    "run_adjusted_return_model",
     "run_python_engine",
     "run_standardized_sensitivity",
 ]
@@ -26,4 +30,3 @@ def __getattr__(name: str):
 
         return run_python_engine
     raise AttributeError(f"module 'lbo.engine' has no attribute {name!r}")
-

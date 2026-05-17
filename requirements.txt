@@ -6,4 +6,4 @@ plotly
 pyxirr
 pytest
 PyYAML
-
+msoffcrypto-tool

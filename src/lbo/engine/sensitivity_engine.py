@@ -2,49 +2,80 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from lbo.schemas.standard_model import StandardModel
+from lbo.schemas.standard_model import SensitivityMatrix, StandardModel
 
 
 class SensitivityCase(BaseModel):
     case_name: str
-    exit_multiple: float
-    ebitda_cagr: float
-    implied_exit_ev: float | None
-    implied_moic: float | None
+    exit_multiple: float | None = None
+    ebitda_cagr: float | None = None
+    implied_exit_ev: float | None = None
+    implied_moic: float | None = None
     warning: str | None = None
 
 
 class SensitivityResult(BaseModel):
     cases: list[SensitivityCase] = Field(default_factory=list)
+    matrices: list[SensitivityMatrix] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
 def run_standardized_sensitivity(model: StandardModel) -> SensitivityResult:
-    ebitda = model.metrics.get("ebitda")
-    entry_ev = model.valuation.entry_ev
-    sponsor_equity = model.returns.sponsor_equity_invested
-    if not ebitda or not ebitda.value or not entry_ev.value or not sponsor_equity.value:
-        return SensitivityResult(warnings=["Missing EBITDA, Entry EV, or Sponsor Equity; sensitivity not calculated."])
+    if model.sensitivities:
+        return SensitivityResult(matrices=model.sensitivities)
 
-    entry_multiple = entry_ev.value / ebitda.value if ebitda.value else None
-    if entry_multiple is None:
-        return SensitivityResult(warnings=["Could not infer entry multiple; sensitivity not calculated."])
+    entry_multiple = _float(model.valuation.entry_multiple.value if model.valuation.entry_multiple else None)
+    ebitda = _latest_float(model.financials.ebitda)
+    if entry_multiple is None and ebitda:
+        entry_ev = _float(model.valuation.entry_ev.value if model.valuation.entry_ev else None)
+        entry_multiple = entry_ev / ebitda if entry_ev else None
+    sponsor_equity = _float(model.returns.sponsor_equity_invested.value if model.returns.sponsor_equity_invested else None)
+    if entry_multiple is None or ebitda is None or sponsor_equity in (None, 0):
+        return SensitivityResult(warnings=["Missing base inputs; generated sensitivity not calculated."])
 
+    row_values = [-0.05, 0.0, 0.05]
+    col_values = [max(entry_multiple - 1.0, 0.0), entry_multiple, entry_multiple + 1.0]
+    values: list[list[float | None]] = []
     cases: list[SensitivityCase] = []
-    for exit_multiple_delta in [-1.0, 0.0, 1.0]:
-        for cagr in [-0.05, 0.0, 0.05]:
-            exit_multiple = max(entry_multiple + exit_multiple_delta, 0)
-            implied_ebitda = ebitda.value * ((1 + cagr) ** 5)
-            implied_exit_ev = implied_ebitda * exit_multiple
-            implied_moic = implied_exit_ev / abs(sponsor_equity.value) if sponsor_equity.value else None
+    for cagr in row_values:
+        row = []
+        for exit_multiple in col_values:
+            exit_ev = ebitda * ((1 + cagr) ** 5) * exit_multiple
+            moic = exit_ev / abs(sponsor_equity)
+            row.append(moic)
             cases.append(
                 SensitivityCase(
                     case_name=f"{exit_multiple:.1f}x / {cagr:.0%} EBITDA CAGR",
                     exit_multiple=exit_multiple,
                     ebitda_cagr=cagr,
-                    implied_exit_ev=implied_exit_ev,
-                    implied_moic=implied_moic,
+                    implied_exit_ev=exit_ev,
+                    implied_moic=moic,
                 )
             )
-    return SensitivityResult(cases=cases)
+        values.append(row)
+    matrix = SensitivityMatrix(
+        matrix_id="generated_exit_multiple_ebitda_cagr",
+        title="Exit Multiple x EBITDA CAGR",
+        row_axis_name="EBITDA CAGR",
+        col_axis_name="Exit EV/EBITDA Multiple",
+        row_values=row_values,
+        col_values=col_values,
+        values=values,
+        metric="MOIC",
+        source_sheet="Python Engine",
+        source_range="generated",
+        confidence="low",
+        extraction_method="python_calculated",
+    )
+    return SensitivityResult(cases=cases, matrices=[matrix])
 
+
+def _latest_float(series) -> float | None:
+    if not series:
+        return None
+    metric = sorted(series.items())[-1][1]
+    return _float(metric.value)
+
+
+def _float(value) -> float | None:
+    return float(value) if isinstance(value, (int, float)) else None
