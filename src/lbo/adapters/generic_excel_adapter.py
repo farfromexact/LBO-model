@@ -4,8 +4,6 @@ from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-
-import pyxirr
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.workbook.workbook import Workbook
@@ -285,10 +283,38 @@ def _sponsor_cash_flows(ws: Worksheet) -> list[dict[str, Any]]:
 
 
 def _xirr(cash_flows: list[dict[str, Any]]) -> float | None:
-    try:
-        return float(pyxirr.xirr([cf["date"] for cf in cash_flows], [cf["amount"] for cf in cash_flows]))
-    except Exception:
+    dated_flows = [(cf["date"], cf["amount"]) for cf in cash_flows if cf.get("date") is not None]
+    if len(dated_flows) < 2 or not any(amount < 0 for _, amount in dated_flows) or not any(amount > 0 for _, amount in dated_flows):
         return None
+
+    start_date = dated_flows[0][0]
+
+    def npv(rate: float) -> float:
+        total = 0.0
+        for flow_date, amount in dated_flows:
+            years = (flow_date - start_date).days / 365.0
+            total += amount / ((1 + rate) ** years)
+        return total
+
+    low = -0.999
+    high = 10.0
+    low_value = npv(low)
+    high_value = npv(high)
+    if low_value * high_value > 0:
+        return None
+
+    for _ in range(100):
+        mid = (low + high) / 2
+        mid_value = npv(mid)
+        if abs(mid_value) < 1e-8:
+            return mid
+        if low_value * mid_value <= 0:
+            high = mid
+            high_value = mid_value
+        else:
+            low = mid
+            low_value = mid_value
+    return (low + high) / 2
 
 
 def _metric_from_cell(ws: Worksheet, metric_id: str, display_name: str, cell_ref: str) -> StandardMetric:
