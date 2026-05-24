@@ -142,6 +142,7 @@ class StandardModel(BaseModel):
     returns: ReturnSummary = Field(default_factory=ReturnSummary)
     debt: DebtSummary | None = None
     sensitivities: list[SensitivityMatrix] = Field(default_factory=list)
+    qualitative: dict[str, str | None] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _sync_metadata_lists(self) -> "StandardModel":

@@ -1,28 +1,41 @@
-# LBO Model Dashboard
+# LBO Investment Memo
 
-Excel-first Streamlit dashboard for extracting selected LBO / financial model outputs from the default CPE workbook.
+Streamlit app for generating a standardized LBO / investment memo from a user-completed Excel input template.
 
 ## V1 Scope
 
-- Load the default CPE workbook from `examples/CPE 龙岛竹项目_财务模型_20260317.xlsx`.
-- Auto-detect likely core sheets.
-- Extract key outputs with source traceability.
-- Show a dashboard for Revenue, EBITDA, Net Debt, Capex, Cash Flow, Entry EV, Exit EV, IRR, and MOIC.
-- Show an Excel vs Python reconciliation shell for the future Python calculation engine.
+V1 uses a standard Excel template as the source of truth. It does not try to reliably parse arbitrary third-party LBO workbooks.
 
-Excel is the source of truth for extracted values. The Python engine computes an MVP return model from selected user-editable assumptions.
+The app can:
 
-The upload workflow is intentionally disabled for now and can be reintroduced later.
+- generate and download a standard input template;
+- upload and validate the completed template;
+- convert validated inputs into `StandardModel`;
+- calculate return summary, value creation bridge, debt paydown, and sensitivity tables;
+- show qualitative investment thesis, risks, diligence questions, and exit rationale supplied by the user;
+- display missing fields and audit warnings clearly.
+
+Legacy Dragon / Spark / Project Sunday adapters are retained as experimental import paths only.
+
+## Standard Template Sheets
+
+- `Deal Setup`
+- `Operating Forecast`
+- `Debt & Cash`
+- `Return Assumptions`
+- `Qualitative Inputs`
+
+Forecast periods support 3-7 years. Missing numeric fields are treated as missing, not zero.
 
 ## Run
 
 ```powershell
 python -m pip install -r requirements.txt
-streamlit run app.py
+python -m streamlit run app.py
 ```
 
 ## Test
 
 ```powershell
-pytest
+python -m pytest
 ```

@@ -23,6 +23,7 @@ from lbo.schemas.standard_model import (
     StandardModel,
     ValuationSummary,
 )
+from lbo.schemas.template_input import DealInput, DebtScheduleInput, OperatingForecast, QualitativeInputs, ReturnInputs, TemplateInputModel
 
 __all__ = [
     "CoreSheets",
@@ -46,4 +47,10 @@ __all__ = [
     "SensitivityMatrix",
     "StandardModel",
     "ValuationSummary",
+    "DealInput",
+    "DebtScheduleInput",
+    "OperatingForecast",
+    "QualitativeInputs",
+    "ReturnInputs",
+    "TemplateInputModel",
 ]

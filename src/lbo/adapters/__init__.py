@@ -4,6 +4,7 @@ from lbo.adapters.chinese_compact_lbo_adapter import ChineseCompactLBOAdapter
 from lbo.adapters.dragon_detailed_lbo_adapter import DragonDetailedLBOAdapter
 from lbo.adapters.generic_lbo_adapter import GenericExcelAdapter, GenericLBOAdapter
 from lbo.adapters.starbucks_project_sunday_adapter import StarbucksProjectSundayAdapter
+from lbo.adapters.template_input_adapter import TemplateInputAdapter
 
 __all__ = [
     "AdapterMatch",
@@ -13,5 +14,6 @@ __all__ = [
     "GenericExcelAdapter",
     "GenericLBOAdapter",
     "StarbucksProjectSundayAdapter",
+    "TemplateInputAdapter",
     "detect_best_adapter",
 ]
